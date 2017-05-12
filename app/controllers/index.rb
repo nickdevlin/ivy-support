@@ -4,7 +4,7 @@ require_relative '../helpers/pitch_helper'
 
 get '/' do
 
-  all_pitches = PitchHelper.pitches_with_location
+  all_pitches = PitchHelper.cutters
 
   plotly = PlotLy.new('nickdevlin1', PLOTLY_API_KEY)
 
@@ -19,7 +19,19 @@ get '/' do
     fileopt: 'overwrite',
     style: { type: 'contour' },
     layout: {
-      title: 'Jon Lester Heatmap'
+      title: 'Jon Lester Heatmap',
+      shapes: [{
+        type: 'rect',
+        xref: 'x',
+        yref: 'y',
+        x0: -0.50,
+        y0: 1.5,
+        x1: 1,
+        y1: 3.5,
+        line: {
+          color: 'black'
+        }
+      }]
     },
     world_readable: true
   }

@@ -9,23 +9,23 @@ module PitchHelper
   end
 
   def self.sinkers
-    all_pitches.select { |pitch| pitch["pitch_type"] == "SI" }
+    pitches_with_location.select { |pitch| pitch["pitch_type"] == "SI" }
   end
 
   def self.cutters
-    all_pitches.select { |pitch| pitch["pitch_type"] == "FC" }
+    pitches_with_location.select { |pitch| pitch["pitch_type"] == "FC" }
   end
 
   def self.fastballs
-    all_pitches.select { |pitch| pitch["pitch_type"] == "FA" }
+    pitches_with_location.select { |pitch| pitch["pitch_type"] == "FA" || pitch["pitch_type"] == "FC" }
   end
 
   def self.curveballs
-    all_pitches.select { |pitch| pitch["pitch_type"] == "CU" }
+    pitches_with_location.select { |pitch| pitch["pitch_type"] == "CU" }
   end
 
   def self.changeups
-    all_pitches.select { |pitch| pitch["pitch_type"] == "CU" }
+    pitches_with_location.select { |pitch| pitch["pitch_type"] == "CU" }
   end
 
   def self.grid(pitch_array)
