@@ -4,27 +4,40 @@ require_relative '../helpers/pitch_helper'
 
 get '/' do
 
-  @pitches = PitchHelper.pitches_with_location.max_by { |pitch| pitch["location_z"] }
+  all_pitches = PitchHelper.pitches_with_location
 
-  plotly = PlotLy.new('nrdevlin', PLOTLY_API_KEY)
+  plotly = PlotLy.new('nickdevlin1', PLOTLY_API_KEY)
 
   data = {
-          x: [-2, -1, 0, 1, 2],
-          y: [0, 1, 2],
-          z: [[0, 20, 1, 6, 8], [0, 30, 1, 7, 25], [0, 12, 1, 20, 1]]
+          x: [-3.75, -3.25, -2.75, -2.25, -1.75, -1.25, -0.75, -0.25, 0.25, 0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75],
+          y: [0.25, 0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75, 4.25, 4.75, 5.25, 5.75],
+          z: PitchHelper.grid(all_pitches)
         }
 
   args = {
     filename: 'ruby_test_heat_map',
     fileopt: 'overwrite',
-    style: { type: 'heatmap' },
+    style: { type: 'contour' },
     layout: {
-      title: 'Jon Lester Heatmap'
+      title: 'Jon Lester Heatmap',
+      shapes: [{
+        type: 'rect',
+        xref: 'x',
+        yref: 'y',
+        x0: -0.70833333,
+        y0: 1.5,
+        x1: 0.70833333,
+        y1: 3.5,
+        line: {
+          color: 'black'
+        }
+      }]
     },
     world_readable: true
   }
 
   plotly.plot(data, args) do |response|
+    @url = response
   end
 
   erb :index
@@ -35,3 +48,10 @@ end
 
 #location_z min: -1.654
 #location_z max: 5.391
+
+#x-range: [-4, 4]
+#z-range: [0, 6]
+
+          # x: [-3.5, -3, -2.5, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4],
+          # y: [0.25, 0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75, 4.25, 4.75, 5.25, 5.75],
+          # z: PitchHelper.grid(all_pitches)

@@ -1,0 +1,13 @@
+.container {
+  margin: 20px auto;
+  width: 900px;
+  padding: 0px 20px 20px 20px;
+  border: 2px solid black;
+  border-radius: 10px;
+  background-color: #F2EFE2;
+  font-family: Futura, sans-serif;
+}
+
+body {
+  background-color: #0E3386;
+}
