@@ -3,7 +3,7 @@
 #      http://stackoverflow.com/questions/7243486/why-do-you-need-require-bundler-setup
 ENV['BUNDLE_GEMFILE'] ||= File.expand_path('../../Gemfile', __FILE__)
 
-PLOTLY_API_KEY = 'zZpuShG5TQlXGT0VonC9'
+PLOTLY_API_KEY = 'NFH5vBef97vtpHuyyJbE'
 
 require 'bundler/setup' if File.exists?(ENV['BUNDLE_GEMFILE'])
 
