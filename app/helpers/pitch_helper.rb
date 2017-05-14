@@ -25,8 +25,80 @@ module PitchHelper
   end
 
   def self.changeups
-    pitches_with_location.select { |pitch| pitch["pitch_type"] == "CU" }
+    pitches_with_location.select { |pitch| pitch["pitch_type"] == "CH" }
   end
+
+  def self.data(pitch_array)
+    {
+      x: [-3.75, -3.25, -2.75, -2.25, -1.75, -1.25, -0.75, -0.25, 0.25, 0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75],
+      y: [0.25, 0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75, 4.25, 4.75, 5.25, 5.75],
+      z: grid(pitch_array)
+    }
+  end
+
+#Strike zone width derived from width of plate (17 inches) divided by 12 and then cut in two for each side. Height taken from this Baseball Prospectus article by current Astros Director of Research and Development Mike Fast: http://www.baseballprospectus.com/article.php?articleid=14098
+
+  def self.args(pitch_type)
+    {
+        filename: 'lester_heat_map',
+        fileopt: 'new',
+        style: { type: 'contour' },
+        layout: {
+          title: "#{pitch_type} thrown by Jon Lester, 2016-present",
+          xaxis: {
+            title: "Position left/right of center (in feet)"
+          },
+          yaxis: {
+            title: "Height (in feet)"
+          },
+          shapes: [{
+            type: 'rect',
+            xref: 'x',
+            yref: 'y',
+            x0: -0.70833333,
+            y0: 1.5,
+            x1: 0.70833333,
+            y1: 3.5,
+            line: {
+              color: 'black'
+            }
+          }]
+        },
+        world_readable: true
+    }
+  end
+
+  def self.update_graph(pitch_type)
+    if pitch_type == "FA"
+        data = data(four_seamers)
+        args = args("Four-seamers")
+    elsif pitch_type == "FC"
+        data = data(cutters)
+        args = args("Cutters")
+    elsif pitch_type == "SI"
+        data = data(sinkers)
+        args = args("Sinkers")
+    elsif pitch_type == "CU"
+        data = data(curveballs)
+        args = args("Curveballs")
+    elsif pitch_type == "CH"
+        data = data(changeups)
+        args = args("Changeups")
+    else
+        data = data(pitches_with_location)
+        args = args("All pitches")
+    end
+
+
+    plotly = PlotLy.new('nickdevlin1', PLOTLY_API_KEY)
+
+    plotly.plot(data, args) do |response|
+        @url = response["url"]
+    end
+
+    @url + ".embed"
+  end
+
 
   #After doing this, I realized a more efficient solution, rather than running 192 separate count functions on the same array, would be to assign an integer to each of the 192 pitch location buckets below, iterate through the pitch array once, and increase the integer by one on each pitch's bucket as it came through. As monstrous as series of count functions is, that would actually make this block of code about three times as long, as there would need to be steps to set up the if/elsif case, assign (or call) the box variable (now an integer rather than an array of pitches), and tick its count up by one. The step for creating the grid at the end would remain unchanged.
 
