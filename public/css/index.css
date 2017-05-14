@@ -3,7 +3,7 @@
   width: 1050px;
   /*padding: 20px 20px 20px 20px;*/
   /*background-color: #F2EFE2;*/
-  font-family: Tahoma, sans-serif;
+  font-family: "Courier New", Courier, monospace;
 }
 
 body {
@@ -21,4 +21,23 @@ body {
 iframe {
   width: 800px;
   height: 600px;
+}
+
+@media (max-width: 950px) {
+  #options-checkbox {
+    float: left;
+    height: 250px;
+    width: 764px;
+  }
+}
+
+@media (max-width: 800px) {
+  .container {
+    width: 100%;
+  }
+  #options-checkbox {
+    float: left;
+    height: 250px;
+    width: 95%;
+  }
 }
