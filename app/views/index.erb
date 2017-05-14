@@ -7,7 +7,19 @@
 </head>
 <body>
   <div class="container">
-    <iframe src="https://plot.ly/~nickdevlin1/0.embed" width="800" height="600"></iframe>
+    <iframe src="https://plot.ly/~nickdevlin1/0.embed"></iframe>
+    <div id="options-checkbox">
+      <h4>Choose a pitch type</h4>
+      <form action="/" method="POST">
+        <input type="radio" name="pitch" value="ALL" checked>All pitches<br>
+        <input type="radio" name="pitch" value="FA">Four-seamers<br>
+        <input type="radio" name="pitch" value="FC">Cutters<br>
+        <input type="radio" name="pitch" value="SI">Sinkers<br>
+        <input type="radio" name="pitch" value="CU">Curveballs<br>
+        <input type="radio" name="pitch" value="CH">Changeups<br>
+        <input type="submit" value="Submit">
+      </form>
+    <div>
   <div>
 </body>
 </html>

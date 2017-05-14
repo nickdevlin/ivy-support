@@ -36,9 +36,18 @@ get '/' do
     world_readable: true
   }
 
-  plotly.plot(data, args) do |response|
-    @url = response
-  end
+  #Strike zone width derived from width of plate (17 inches) divided by 12 and then cut in two. Height taken from this Baseball Prospectus article by current Astros Director of Research and Development Mike Fast: http://www.baseballprospectus.com/article.php?articleid=14098
+
+  # plotly.plot(data, args) do |response|
+  #   @url = response
+  # end
+
+  erb :index
+end
+
+post "/" do
+  if params["pitch"] == "ALL"
+
 
   erb :index
 end
@@ -51,7 +60,3 @@ end
 
 #x-range: [-4, 4]
 #z-range: [0, 6]
-
-          # x: [-3.5, -3, -2.5, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4],
-          # y: [0.25, 0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75, 4.25, 4.75, 5.25, 5.75],
-          # z: PitchHelper.grid(all_pitches)

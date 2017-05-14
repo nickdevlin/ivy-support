@@ -16,8 +16,8 @@ module PitchHelper
     pitches_with_location.select { |pitch| pitch["pitch_type"] == "FC" }
   end
 
-  def self.fastballs
-    pitches_with_location.select { |pitch| pitch["pitch_type"] == "FA" || pitch["pitch_type"] == "FC" }
+  def self.four_seamers
+    pitches_with_location.select { |pitch| pitch["pitch_type"] == "FA" }
   end
 
   def self.curveballs
@@ -28,7 +28,10 @@ module PitchHelper
     pitches_with_location.select { |pitch| pitch["pitch_type"] == "CU" }
   end
 
+  #After doing this, I realized a more efficient solution, rather than running 192 separate count functions on the same array, would be to assign an integer to each of the 192 pitch location buckets below, iterate through the pitch array once, and increase the integer by one on each pitch's bucket as it came through. As monstrous as series of count functions is, that would actually make this block of code about three times as long, as there would need to be steps to set up the if/elsif case, assign (or call) the box variable (now an integer rather than an array of pitches), and tick its count up by one. The step for creating the grid at the end would remain unchanged.
+
   def self.grid(pitch_array)
+
     box12_1 = pitch_array.count { |pitch| pitch["location_x"] < -3.5 && pitch["location_z"] > 5.5 }
     box12_2 = pitch_array.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 && pitch["location_z"] > 5.5 }
     box12_3 = pitch_array.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 && pitch["location_z"] > 5.5 }
