@@ -3,11 +3,25 @@
 <head>
   <title>Cubs Heatmaps</title>
   <link rel="stylesheet" href="/css/index.css">
+  <script data-plotly="louism:5" src="https://plot.ly/embed.js" async></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="shortcut icon" href="https://s-media-cache-ak0.pinimg.com/originals/0f/25/ac/0f25ac39a7f7dd1a0d51de8462d0632e.gif" type="image/png"/>
 </head>
 <body>
   <div class="container">
-    <iframe src="https://plot.ly/~nickdevlin1/0.embed" width="800" height="600"></iframe>
+    <iframe src=<%= @url %>></iframe>
+    <div id="options-checkbox">
+      <h4>Choose a pitch type</h4>
+      <form action="/" method="POST">
+        <input type="radio" name="pitch" value="ALL" checked>All pitches<br>
+        <input type="radio" name="pitch" value="FA">Four-seamers<br>
+        <input type="radio" name="pitch" value="FC">Cutters<br>
+        <input type="radio" name="pitch" value="SI">Sinkers<br>
+        <input type="radio" name="pitch" value="CU">Curveballs<br>
+        <input type="radio" name="pitch" value="CH">Changeups<br><br>
+        <input type="submit" value="Submit">
+      </form>
+    <div>
   <div>
 </body>
 </html>

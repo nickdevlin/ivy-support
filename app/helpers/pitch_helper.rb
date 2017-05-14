@@ -1,11 +1,7 @@
 module PitchHelper
 
-  def self.all_pitches
-    JSON.parse(open('lester.json').read)
-  end
-
   def self.pitches_with_location
-    all_pitches.select { |pitch| pitch["location_x"] && pitch["location_z"]}
+    JSON.parse(open('lester.json').read).select { |pitch| pitch["location_x"] && pitch["location_z"]}
   end
 
   def self.sinkers
@@ -16,8 +12,8 @@ module PitchHelper
     pitches_with_location.select { |pitch| pitch["pitch_type"] == "FC" }
   end
 
-  def self.fastballs
-    pitches_with_location.select { |pitch| pitch["pitch_type"] == "FA" || pitch["pitch_type"] == "FC" }
+  def self.four_seamers
+    pitches_with_location.select { |pitch| pitch["pitch_type"] == "FA" }
   end
 
   def self.curveballs
@@ -25,213 +21,304 @@ module PitchHelper
   end
 
   def self.changeups
-    pitches_with_location.select { |pitch| pitch["pitch_type"] == "CU" }
+    pitches_with_location.select { |pitch| pitch["pitch_type"] == "CH" }
   end
 
+  def self.data(pitch_array)
+    {
+      x: [-3.75, -3.25, -2.75, -2.25, -1.75, -1.25, -0.75, -0.25, 0.25, 0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75],
+      y: [0.25, 0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75, 4.25, 4.75, 5.25, 5.75],
+      z: grid(pitch_array)
+    }
+  end
+
+#Strike zone width derived from width of plate (17 inches) divided by 12 and then cut in two for each side. Height taken from this Baseball Prospectus article by current Astros Director of Research and Development Mike Fast: http://www.baseballprospectus.com/article.php?articleid=14098
+
+  def self.args(pitch_type)
+    {
+        filename: 'lester_heat_map',
+        fileopt: 'new',
+        style: { type: 'contour' },
+        layout: {
+          title: "#{pitch_type} thrown by Jon Lester, 2016-present",
+          xaxis: {
+            title: 'Distance from middle of plate as it crosses front plane of plate (in feet)'
+          },
+          yaxis: {
+            title: 'Height of ball as it crosses plate (in feet)'
+          },
+          font: {
+            family: 'Courier, monospace'
+            },
+          shapes: [{
+            type: 'rect',
+            xref: 'x',
+            yref: 'y',
+            x0: -0.70833333,
+            y0: 1.5,
+            x1: 0.70833333,
+            y1: 3.5,
+            line: {
+              color: 'black'
+            }
+          }]
+        },
+        world_readable: true
+    }
+  end
+
+  def self.update_graph(pitch_type)
+    if pitch_type == "FA"
+        data = data(four_seamers)
+        args = args("Four-seamers")
+    elsif pitch_type == "FC"
+        data = data(cutters)
+        args = args("Cutters")
+    elsif pitch_type == "SI"
+        data = data(sinkers)
+        args = args("Sinkers")
+    elsif pitch_type == "CU"
+        data = data(curveballs)
+        args = args("Curveballs")
+    elsif pitch_type == "CH"
+        data = data(changeups)
+        args = args("Changeups")
+    else
+        data = data(pitches_with_location)
+        args = args("All pitches")
+    end
+
+    plotly = PlotLy.new('nickdevlin1', PLOTLY_API_KEY)
+
+    plotly.plot(data, args) do |response|
+        @url = response["url"]
+    end
+
+    @url + ".embed"
+  end
+
+
+  #After doing this, I realized a more efficient solution, rather than running 192 separate count functions on the same array, would be to assign an integer to each of the 192 pitch location "buckets" below, iterate through the pitch array once, and increase the integer by one on each pitch's bucket as it came through. That would make this grid method about three times as long, as there would need to be steps to set up the if/elsif case for each bucket, assign (or call) the variable for each bucket, and tick its count up by one. The step for creating the grid at the end would remain unchanged.
+
+  #UPDATE: Refactored so that I'm only going through the entire JSON file 12 times instead of 192 - once for each row. Then I'm running counts on each row for each location bucket.
+
   def self.grid(pitch_array)
-    box12_1 = pitch_array.count { |pitch| pitch["location_x"] < -3.5 && pitch["location_z"] > 5.5 }
-    box12_2 = pitch_array.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 && pitch["location_z"] > 5.5 }
-    box12_3 = pitch_array.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 && pitch["location_z"] > 5.5 }
-    box12_4 = pitch_array.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 && pitch["location_z"] > 5.5 }
-    box12_5 = pitch_array.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 && pitch["location_z"] > 5.5 }
-    box12_6 = pitch_array.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 && pitch["location_z"] > 5.5 }
-    box12_7 = pitch_array.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 && pitch["location_z"] > 5.5 }
-    box12_8 = pitch_array.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 && pitch["location_z"] > 5.5 }
-    box12_9 = pitch_array.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 && pitch["location_z"] > 5.5 }
-    box12_10 = pitch_array.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 && pitch["location_z"] > 5.5 }
-    box12_11 = pitch_array.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 && pitch["location_z"] > 5.5 }
-    box12_12 = pitch_array.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 && pitch["location_z"] > 5.5 }
-    box12_13 = pitch_array.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 && pitch["location_z"] > 5.5 }
-    box12_14 = pitch_array.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 && pitch["location_z"] > 5.5 }
-    box12_15 = pitch_array.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 && pitch["location_z"] > 5.5 }
-    box12_16 = pitch_array.count { |pitch| pitch["location_x"] >= 3.5 && pitch["location_z"] > 5.5 }
 
-    box11_1 = pitch_array.count { |pitch| pitch["location_x"] < -3.5 && pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
-    box11_2 = pitch_array.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 && pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
-    box11_3 = pitch_array.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 && pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
-    box11_4 = pitch_array.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 && pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
-    box11_5 = pitch_array.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 && pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
-    box11_6 = pitch_array.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 && pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
-    box11_7 = pitch_array.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 && pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
-    box11_8 = pitch_array.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 && pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
-    box11_9 = pitch_array.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 && pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
-    box11_10 = pitch_array.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 && pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
-    box11_11 = pitch_array.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 && pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
-    box11_12 = pitch_array.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 && pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
-    box11_13 = pitch_array.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 && pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
-    box11_14 = pitch_array.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 && pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
-    box11_15 = pitch_array.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 && pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
-    box11_16 = pitch_array.count { |pitch| pitch["location_x"] >= 3.5 && pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
+    row12 = pitch_array.select { |pitch| pitch["location_z"] > 5.5 }
+    box12_1 = row12.count { |pitch| pitch["location_x"] < -3.5 }
+    box12_2 = row12.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 }
+    box12_3 = row12.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 }
+    box12_4 = row12.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 }
+    box12_5 = row12.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 }
+    box12_6 = row12.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 }
+    box12_7 = row12.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 }
+    box12_8 = row12.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 }
+    box12_9 = row12.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 }
+    box12_10 = row12.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 }
+    box12_11 = row12.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 }
+    box12_12 = row12.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 }
+    box12_13 = row12.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 }
+    box12_14 = row12.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 }
+    box12_15 = row12.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 }
+    box12_16 = row12.count { |pitch| pitch["location_x"] >= 3.5 }
 
-    box10_1 = pitch_array.count { |pitch| pitch["location_x"] < -3.5 && pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
-    box10_2 = pitch_array.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 && pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
-    box10_3 = pitch_array.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 && pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
-    box10_4 = pitch_array.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 && pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
-    box10_5 = pitch_array.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 && pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
-    box10_6 = pitch_array.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 && pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
-    box10_7 = pitch_array.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 && pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
-    box10_8 = pitch_array.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 && pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
-    box10_9 = pitch_array.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 && pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
-    box10_10 = pitch_array.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 && pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
-    box10_11 = pitch_array.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 && pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
-    box10_12 = pitch_array.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 && pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
-    box10_13 = pitch_array.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 && pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
-    box10_14 = pitch_array.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 && pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
-    box10_15 = pitch_array.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 && pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
-    box10_16 = pitch_array.count { |pitch| pitch["location_x"] >= 3.5 && pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
+    row11 = pitch_array.select { |pitch| pitch["location_z"] > 5 && pitch["location_z"] <= 5.5 }
+    box11_1 = row11.count { |pitch| pitch["location_x"] < -3.5 }
+    box11_2 = row11.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 }
+    box11_3 = row11.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 }
+    box11_4 = row11.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 }
+    box11_5 = row11.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 }
+    box11_6 = row11.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 }
+    box11_7 = row11.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 }
+    box11_8 = row11.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 }
+    box11_9 = row11.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 }
+    box11_10 = row11.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 }
+    box11_11 = row11.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 }
+    box11_12 = row11.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 }
+    box11_13 = row11.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 }
+    box11_14 = row11.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 }
+    box11_15 = row11.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 }
+    box11_16 = row11.count { |pitch| pitch["location_x"] >= 3.5 }
 
-    box9_1 = pitch_array.count { |pitch| pitch["location_x"] < -3.5 && pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
-    box9_2 = pitch_array.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 && pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
-    box9_3 = pitch_array.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 && pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
-    box9_4 = pitch_array.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 && pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
-    box9_5 = pitch_array.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 && pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
-    box9_6 = pitch_array.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 && pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
-    box9_7 = pitch_array.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 && pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
-    box9_8 = pitch_array.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 && pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
-    box9_9 = pitch_array.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 && pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
-    box9_10 = pitch_array.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 && pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
-    box9_11 = pitch_array.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 && pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
-    box9_12 = pitch_array.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 && pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
-    box9_13 = pitch_array.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 && pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
-    box9_14 = pitch_array.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 && pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
-    box9_15 = pitch_array.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 && pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
-    box9_16 = pitch_array.count { |pitch| pitch["location_x"] >= 3.5 && pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
+    row10 = pitch_array.select { |pitch| pitch["location_z"] > 4.5 && pitch["location_z"] <= 5 }
+    box10_1 = row10.count { |pitch| pitch["location_x"] < -3.5 }
+    box10_2 = row10.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 }
+    box10_3 = row10.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 }
+    box10_4 = row10.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 }
+    box10_5 = row10.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 }
+    box10_6 = row10.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 }
+    box10_7 = row10.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 }
+    box10_8 = row10.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 }
+    box10_9 = row10.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 }
+    box10_10 = row10.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 }
+    box10_11 = row10.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 }
+    box10_12 = row10.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 }
+    box10_13 = row10.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 }
+    box10_14 = row10.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 }
+    box10_15 = row10.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 }
+    box10_16 = row10.count { |pitch| pitch["location_x"] >= 3.5 }
 
-    box8_1 = pitch_array.count { |pitch| pitch["location_x"] < -3.5 && pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
-    box8_2 = pitch_array.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 && pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
-    box8_3 = pitch_array.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 && pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
-    box8_4 = pitch_array.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 && pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
-    box8_5 = pitch_array.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 && pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
-    box8_6 = pitch_array.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 && pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
-    box8_7 = pitch_array.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 && pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
-    box8_8 = pitch_array.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 && pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
-    box8_9 = pitch_array.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 && pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
-    box8_10 = pitch_array.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 && pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
-    box8_11 = pitch_array.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 && pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
-    box8_12 = pitch_array.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 && pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
-    box8_13 = pitch_array.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 && pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
-    box8_14 = pitch_array.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 && pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
-    box8_15 = pitch_array.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 && pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
-    box8_16 = pitch_array.count { |pitch| pitch["location_x"] >= 3.5 && pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
+    row9 = pitch_array.select { |pitch| pitch["location_z"] > 4 && pitch["location_z"] <= 4.5 }
+    box9_1 = row9.count { |pitch| pitch["location_x"] < -3.5 }
+    box9_2 = row9.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 }
+    box9_3 = row9.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 }
+    box9_4 = row9.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 }
+    box9_5 = row9.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 }
+    box9_6 = row9.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 }
+    box9_7 = row9.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 }
+    box9_8 = row9.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 }
+    box9_9 = row9.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 }
+    box9_10 = row9.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 }
+    box9_11 = row9.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 }
+    box9_12 = row9.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 }
+    box9_13 = row9.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 }
+    box9_14 = row9.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 }
+    box9_15 = row9.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 }
+    box9_16 = row9.count { |pitch| pitch["location_x"] >= 3.5 }
 
-    box7_1 = pitch_array.count { |pitch| pitch["location_x"] < -3.5 && pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
-    box7_2 = pitch_array.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 && pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
-    box7_3 = pitch_array.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 && pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
-    box7_4 = pitch_array.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 && pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
-    box7_5 = pitch_array.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 && pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
-    box7_6 = pitch_array.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 && pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
-    box7_7 = pitch_array.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 && pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
-    box7_8 = pitch_array.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 && pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
-    box7_9 = pitch_array.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 && pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
-    box7_10 = pitch_array.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 && pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
-    box7_11 = pitch_array.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 && pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
-    box7_12 = pitch_array.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 && pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
-    box7_13 = pitch_array.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 && pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
-    box7_14 = pitch_array.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 && pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
-    box7_15 = pitch_array.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 && pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
-    box7_16 = pitch_array.count { |pitch| pitch["location_x"] >= 3.5 && pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
+    row8 = pitch_array.select { |pitch| pitch["location_z"] > 3.5 && pitch["location_z"] <= 4 }
+    box8_1 = row8.count { |pitch| pitch["location_x"] < -3.5 }
+    box8_2 = row8.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 }
+    box8_3 = row8.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 }
+    box8_4 = row8.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 }
+    box8_5 = row8.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 }
+    box8_6 = row8.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 }
+    box8_7 = row8.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 }
+    box8_8 = row8.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 }
+    box8_9 = row8.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 }
+    box8_10 = row8.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 }
+    box8_11 = row8.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 }
+    box8_12 = row8.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 }
+    box8_13 = row8.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 }
+    box8_14 = row8.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 }
+    box8_15 = row8.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 }
+    box8_16 = row8.count { |pitch| pitch["location_x"] >= 3.5 }
 
-    box6_1 = pitch_array.count { |pitch| pitch["location_x"] < -3.5 && pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
-    box6_2 = pitch_array.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 && pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
-    box6_3 = pitch_array.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 && pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
-    box6_4 = pitch_array.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 && pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
-    box6_5 = pitch_array.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 && pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
-    box6_6 = pitch_array.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 && pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
-    box6_7 = pitch_array.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 && pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
-    box6_8 = pitch_array.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 && pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
-    box6_9 = pitch_array.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 && pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
-    box6_10 = pitch_array.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 && pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
-    box6_11 = pitch_array.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 && pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
-    box6_12 = pitch_array.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 && pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
-    box6_13 = pitch_array.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 && pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
-    box6_14 = pitch_array.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 && pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
-    box6_15 = pitch_array.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 && pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
-    box6_16 = pitch_array.count { |pitch| pitch["location_x"] >= 3.5 && pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
+    row7 = pitch_array.select { |pitch| pitch["location_z"] > 3 && pitch["location_z"] <= 3.5 }
+    box7_1 = row7.count { |pitch| pitch["location_x"] < -3.5 }
+    box7_2 = row7.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 }
+    box7_3 = row7.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 }
+    box7_4 = row7.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 }
+    box7_5 = row7.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 }
+    box7_6 = row7.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 }
+    box7_7 = row7.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 }
+    box7_8 = row7.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 }
+    box7_9 = row7.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 }
+    box7_10 = row7.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 }
+    box7_11 = row7.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 }
+    box7_12 = row7.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 }
+    box7_13 = row7.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 }
+    box7_14 = row7.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 }
+    box7_15 = row7.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 }
+    box7_16 = row7.count { |pitch| pitch["location_x"] >= 3.5 }
 
-    box5_1 = pitch_array.count { |pitch| pitch["location_x"] < -3.5 && pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
-    box5_2 = pitch_array.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 && pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
-    box5_3 = pitch_array.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 && pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
-    box5_4 = pitch_array.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 && pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
-    box5_5 = pitch_array.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 && pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
-    box5_6 = pitch_array.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 && pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
-    box5_7 = pitch_array.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 && pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
-    box5_8 = pitch_array.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 && pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
-    box5_9 = pitch_array.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 && pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
-    box5_10 = pitch_array.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 && pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
-    box5_11 = pitch_array.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 && pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
-    box5_12 = pitch_array.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 && pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
-    box5_13 = pitch_array.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 && pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
-    box5_14 = pitch_array.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 && pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
-    box5_15 = pitch_array.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 && pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
-    box5_16 = pitch_array.count { |pitch| pitch["location_x"] >= 3.5 && pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
+    row6 = pitch_array.select { |pitch| pitch["location_z"] > 2.5 && pitch["location_z"] <= 3 }
+    box6_1 = row6.count { |pitch| pitch["location_x"] < -3.5 }
+    box6_2 = row6.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 }
+    box6_3 = row6.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 }
+    box6_4 = row6.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 }
+    box6_5 = row6.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 }
+    box6_6 = row6.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 }
+    box6_7 = row6.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 }
+    box6_8 = row6.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 }
+    box6_9 = row6.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 }
+    box6_10 = row6.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 }
+    box6_11 = row6.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 }
+    box6_12 = row6.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 }
+    box6_13 = row6.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 }
+    box6_14 = row6.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 }
+    box6_15 = row6.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 }
+    box6_16 = row6.count { |pitch| pitch["location_x"] >= 3.5 }
 
-    box4_1 = pitch_array.count { |pitch| pitch["location_x"] < -3.5 && pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
-    box4_2 = pitch_array.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 && pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
-    box4_3 = pitch_array.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 && pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
-    box4_4 = pitch_array.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 && pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
-    box4_5 = pitch_array.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 && pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
-    box4_6 = pitch_array.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 && pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
-    box4_7 = pitch_array.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 && pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
-    box4_8 = pitch_array.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 && pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
-    box4_9 = pitch_array.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 && pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
-    box4_10 = pitch_array.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 && pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
-    box4_11 = pitch_array.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 && pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
-    box4_12 = pitch_array.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 && pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
-    box4_13 = pitch_array.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 && pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
-    box4_14 = pitch_array.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 && pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
-    box4_15 = pitch_array.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 && pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
-    box4_16 = pitch_array.count { |pitch| pitch["location_x"] >= 3.5 && pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
+    row5 = pitch_array.select { |pitch| pitch["location_z"] > 2 && pitch["location_z"] <= 2.5 }
+    box5_1 = row5.count { |pitch| pitch["location_x"] < -3.5 }
+    box5_2 = row5.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 }
+    box5_3 = row5.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 }
+    box5_4 = row5.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 }
+    box5_5 = row5.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 }
+    box5_6 = row5.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 }
+    box5_7 = row5.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 }
+    box5_8 = row5.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 }
+    box5_9 = row5.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 }
+    box5_10 = row5.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 }
+    box5_11 = row5.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 }
+    box5_12 = row5.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 }
+    box5_13 = row5.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 }
+    box5_14 = row5.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 }
+    box5_15 = row5.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 }
+    box5_16 = row5.count { |pitch| pitch["location_x"] >= 3.5 }
 
-    box3_1 = pitch_array.count { |pitch| pitch["location_x"] < -3.5 && pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
-    box3_2 = pitch_array.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 && pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
-    box3_3 = pitch_array.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 && pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
-    box3_4 = pitch_array.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 && pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
-    box3_5 = pitch_array.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 && pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
-    box3_6 = pitch_array.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 && pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
-    box3_7 = pitch_array.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 && pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
-    box3_8 = pitch_array.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 && pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
-    box3_9 = pitch_array.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 && pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
-    box3_10 = pitch_array.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 && pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
-    box3_11 = pitch_array.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 && pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
-    box3_12 = pitch_array.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 && pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
-    box3_13 = pitch_array.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 && pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
-    box3_14 = pitch_array.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 && pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
-    box3_15 = pitch_array.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 && pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
-    box3_16 = pitch_array.count { |pitch| pitch["location_x"] >= 3.5 && pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
+    row4 = pitch_array.select { |pitch| pitch["location_z"] > 1.5 && pitch["location_z"] <= 2 }
+    box4_1 = row4.count { |pitch| pitch["location_x"] < -3.5 }
+    box4_2 = row4.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 }
+    box4_3 = row4.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 }
+    box4_4 = row4.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 }
+    box4_5 = row4.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 }
+    box4_6 = row4.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 }
+    box4_7 = row4.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 }
+    box4_8 = row4.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 }
+    box4_9 = row4.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 }
+    box4_10 = row4.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 }
+    box4_11 = row4.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 }
+    box4_12 = row4.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 }
+    box4_13 = row4.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 }
+    box4_14 = row4.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 }
+    box4_15 = row4.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 }
+    box4_16 = row4.count { |pitch| pitch["location_x"] >= 3.5 }
 
-    box2_1 = pitch_array.count { |pitch| pitch["location_x"] < -3.5 && pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
-    box2_2 = pitch_array.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 && pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
-    box2_3 = pitch_array.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 && pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
-    box2_4 = pitch_array.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 && pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
-    box2_5 = pitch_array.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 && pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
-    box2_6 = pitch_array.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 && pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
-    box2_7 = pitch_array.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 && pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
-    box2_8 = pitch_array.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 && pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
-    box2_9 = pitch_array.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 && pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
-    box2_10 = pitch_array.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 && pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
-    box2_11 = pitch_array.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 && pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
-    box2_12 = pitch_array.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 && pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
-    box2_13 = pitch_array.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 && pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
-    box2_14 = pitch_array.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 && pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
-    box2_15 = pitch_array.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 && pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
-    box2_16 = pitch_array.count { |pitch| pitch["location_x"] >= 3.5 && pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
+    row3 = pitch_array.select { |pitch| pitch["location_z"] > 1 && pitch["location_z"] <= 1.5 }
+    box3_1 = row3.count { |pitch| pitch["location_x"] < -3.5 }
+    box3_2 = row3.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 }
+    box3_3 = row3.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 }
+    box3_4 = row3.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 }
+    box3_5 = row3.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 }
+    box3_6 = row3.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 }
+    box3_7 = row3.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 }
+    box3_8 = row3.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 }
+    box3_9 = row3.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 }
+    box3_10 = row3.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 }
+    box3_11 = row3.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 }
+    box3_12 = row3.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 }
+    box3_13 = row3.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 }
+    box3_14 = row3.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 }
+    box3_15 = row3.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 }
+    box3_16 = row3.count { |pitch| pitch["location_x"] >= 3.5 }
 
-    box1_1 = pitch_array.count { |pitch| pitch["location_x"] < -3.5 && pitch["location_z"] <= 0.5 }
-    box1_2 = pitch_array.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 && pitch["location_z"] <= 0.5 }
-    box1_3 = pitch_array.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 && pitch["location_z"] <= 0.5 }
-    box1_4 = pitch_array.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 && pitch["location_z"] <= 0.5 }
-    box1_5 = pitch_array.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 && pitch["location_z"] <= 0.5 }
-    box1_6 = pitch_array.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 && pitch["location_z"] <= 0.5 }
-    box1_7 = pitch_array.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 && pitch["location_z"] <= 0.5 }
-    box1_8 = pitch_array.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 && pitch["location_z"] <= 0.5 }
-    box1_9 = pitch_array.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 && pitch["location_z"] <= 0.5 }
-    box1_10 = pitch_array.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 && pitch["location_z"] <= 0.5 }
-    box1_11 = pitch_array.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 && pitch["location_z"] <= 0.5 }
-    box1_12 = pitch_array.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 && pitch["location_z"] <= 0.5 }
-    box1_13 = pitch_array.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 && pitch["location_z"] <= 0.5 }
-    box1_14 = pitch_array.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 && pitch["location_z"] <= 0.5 }
-    box1_15 = pitch_array.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 && pitch["location_z"] <= 0.5 }
-    box1_16 = pitch_array.count { |pitch| pitch["location_x"] >= 3.5 && pitch["location_z"] <= 1 }
+    row2 = pitch_array.select { |pitch| pitch["location_z"] > 0.5 && pitch["location_z"] <= 1 }
+    box2_1 = row2.count { |pitch| pitch["location_x"] < -3.5 }
+    box2_2 = row2.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 }
+    box2_3 = row2.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 }
+    box2_4 = row2.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 }
+    box2_5 = row2.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 }
+    box2_6 = row2.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 }
+    box2_7 = row2.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 }
+    box2_8 = row2.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 }
+    box2_9 = row2.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 }
+    box2_10 = row2.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 }
+    box2_11 = row2.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 }
+    box2_12 = row2.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 }
+    box2_13 = row2.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 }
+    box2_14 = row2.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 }
+    box2_15 = row2.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 }
+    box2_16 = row2.count { |pitch| pitch["location_x"] >= 3.5 }
+
+    row1 = pitch_array.select { |pitch| pitch["location_z"] <= 0.5 }
+    box1_1 = row1.count { |pitch| pitch["location_x"] < -3.5 }
+    box1_2 = row1.count { |pitch| pitch["location_x"] < -3 && pitch["location_x"] >= -3.5 }
+    box1_3 = row1.count { |pitch| pitch["location_x"] < -2.5 && pitch["location_x"] >= -3 }
+    box1_4 = row1.count { |pitch| pitch["location_x"] < -2 && pitch["location_x"] >= -2.5 }
+    box1_5 = row1.count { |pitch| pitch["location_x"] < -1.5 && pitch["location_x"] >= -2 }
+    box1_6 = row1.count { |pitch| pitch["location_x"] < -1 && pitch["location_x"] >= -1.5 }
+    box1_7 = row1.count { |pitch| pitch["location_x"] < -0.5 && pitch["location_x"] >= -1 }
+    box1_8 = row1.count { |pitch| pitch["location_x"] < 0 && pitch["location_x"] >= -0.5 }
+    box1_9 = row1.count { |pitch| pitch["location_x"] < 0.5 && pitch["location_x"] >= 0 }
+    box1_10 = row1.count { |pitch| pitch["location_x"] < 1 && pitch["location_x"] >= 0.5 }
+    box1_11 = row1.count { |pitch| pitch["location_x"] < 1.5 && pitch["location_x"] >= 1 }
+    box1_12 = row1.count { |pitch| pitch["location_x"] < 2 && pitch["location_x"] >= 1.5 }
+    box1_13 = row1.count { |pitch| pitch["location_x"] < 2.5 && pitch["location_x"] >= 2 }
+    box1_14 = row1.count { |pitch| pitch["location_x"] < 3 && pitch["location_x"] >= 2.5 }
+    box1_15 = row1.count { |pitch| pitch["location_x"] < 3.5 && pitch["location_x"] >= 3 }
+    box1_16 = row1.count { |pitch| pitch["location_x"] >= 3.5 }
 
     return [
             [box1_1, box1_2, box1_3, box1_4, box1_5, box1_6, box1_7, box1_8, box1_9, box1_10, box1_11, box1_12, box1_13, box1_14, box1_15, box1_16],
