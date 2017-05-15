@@ -88,7 +88,7 @@ module PitchHelper
         args = args("All pitches")
     end
 
-    plotly = PlotLy.new('nickdevlin1', ENV["PLOTLY_API_KEY"])
+    plotly = PlotLy.new('nrdevlin', ENV["PLOTLY_API_KEY"])
 
     plotly.plot(data, args) do |response|
         @url = response["url"]
